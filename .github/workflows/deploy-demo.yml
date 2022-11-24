@@ -16,11 +16,3 @@ jobs:
           contents="$(jq -r --arg id "$cypress_CLIENT_ID_BACKSTOPPED" --arg secret "$cypress_CLIENT_SECRET_BACKSTOPPED" --arg customer "$cypress_CUSTOMER_GUID_BACKSTOPPED" '.environment.credentials.publicCustomerGuid=$customer | .environment.credentials.publicClientId=$id | .environment.credentials.publicClientSecret=$secret' src/environments/environment.ci.json)" && \
           echo "${contents}" > src/environments/environment.ci.json
           cat src/environments/environment.ci.json
-      - name: Install and Build
-        run: |
-          npm ci
-          npm run build
-      - name: Deploy
-        uses: JamesIves/github-pages-deploy-action@v4.4.1
-        with:
-          folder: dist/demo
