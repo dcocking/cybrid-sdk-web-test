@@ -14,13 +14,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Print env vars
-        run: echo $CLIENT_ID
       - name: Update public demo credentials
         run: |
           contents="$(jq -r --arg id "$CLIENT_ID" --arg secret "$CLIENT_SECRET" --arg customer "$CUSTOMER_GUID" '.environment.credentials.publicCustomerGuid=$customer | .environment.credentials.publicClientId=$id | .environment.credentials.publicClientSecret=$secret' src/environments/environment.ci.json)" && \
           echo "${contents}" > src/environments/environment.ci.json
-          cat src/environments/environment.ci.json
       - name: Install and Build
         run: |
           npm ci
