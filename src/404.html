@@ -23,7 +23,7 @@
   <!-- Hash forwarding. Plaid doesn't allow for '#' in their redirectUri -->
   <script>
     const currentPath = window.location.pathname;
-    const newPath = currentPath.replace(/^\/cybrid-sdk-web-test(.*)$/, '/cybrid-sdk-web-test/#$1');
+    const newPath = currentPath.replace(/^\/cybrid-sdk-web-test\/(.*)$/, '/cybrid-sdk-web-test/#$1');
     window.location.href = newPath;
   </script>
 
