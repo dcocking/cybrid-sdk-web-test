@@ -45,6 +45,8 @@ export class DemoViewerComponent implements OnInit {
     this.configService.config$
       .pipe(takeUntil(this.unsubscribe$))
       .subscribe((config) => (this.config = config));
+
+    console.log(this.location.path(true));
   }
 
   ngOnInit() {
