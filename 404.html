@@ -1,3 +1,4 @@
+<!-- Workaround fo Github Pages. If a route doesn't exist, this 404 will be served which mirrors the index.html -->
 <!DOCTYPE html>
 <html lang="en" class="cybrid-light-theme">
 <head>
@@ -19,9 +20,11 @@
     href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined"
     rel="stylesheet"
   />
+  <!-- Hash forwarding. Plaid doesn't allow for '#' in their redirectUri -->
   <script>
-    const hashPath = window.location.pathname.replace('/demo', '') + window.location.search + window.location.hash;
-    window.location.href = `/#${hashPath}`;
+    const currentPath = window.location.pathname;
+    const newPath = currentPath.replace(/^\/cybrid-sdk-web-test\/(.*)$/, '/cybrid-sdk-web-test/#$1');
+    window.location.href = newPath;
   </script>
 
 </head>
