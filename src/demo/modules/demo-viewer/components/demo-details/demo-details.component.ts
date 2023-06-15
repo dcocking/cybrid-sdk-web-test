@@ -62,11 +62,9 @@ export class DemoDetailsComponent implements AfterViewInit, OnDestroy {
           this._renderer2.setProperty(sdk, 'component', params['id']);
 
           console.log(`demo-details: ${this.location.path(true)}`);
-          const searchParams = new URLSearchParams(window.location.search);
-          console.log(`demo details window: ${searchParams}`);
 
           // Update routed component, and any query params
-          this.location.replaceState(`demo/${params['id'] + searchParams}`);
+          this.location.replaceState(this.location.path(true));
 
           // Subscribe to logging
           this._renderer2.listen(sdk, 'eventLog', (event) => {
@@ -80,7 +78,7 @@ export class DemoDetailsComponent implements AfterViewInit, OnDestroy {
               this.demoViewerService.updateRoute(component);
 
               // Update routed component, and any query params
-              this.location.replaceState(`demo/${component + searchParams}`);
+              this.location.replaceState(`demo/${component}`);
             }
           });
 
