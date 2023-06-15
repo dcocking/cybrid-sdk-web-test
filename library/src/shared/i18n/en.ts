@@ -5,8 +5,12 @@ export default {
   done: 'DONE',
   begin: 'BEGIN',
   resume: 'RESUME',
+  disconnect: 'DISCONNECT',
+  reconnect: 'RECONNECT',
   back: 'Back',
   date: 'Date',
+  to: 'To',
+  from: 'From',
   fatal: 'An unrecoverable error occurred',
   unexpectedError: 'Unexpected error.',
 
@@ -68,7 +72,8 @@ export default {
 
   // Account list component
   accountList: {
-    total: 'TOTAL VALUE',
+    total: 'Account Value',
+    available: 'Available to Trade',
     account: {
       header: 'Asset',
       subheader: 'Market Price'
@@ -90,6 +95,12 @@ export default {
       trade: 'Error fetching trades',
       noData: 'No trades found'
     }
+  },
+
+  // Account balance component
+  accountBalance: {
+    pending: 'Pending',
+    settled: 'No trades pending'
   },
 
   // Account trade component
@@ -130,20 +141,96 @@ export default {
     verifying: 'Verifying...',
     verified: 'You have been verified.',
     rejected: 'Unable to verify identity.',
-    unverified: 'Begin identity verification.',
     support: 'Please contact customer support.',
     reviewing: 'Identity being reviewed.',
+    processing: 'Processing identity verification, check back later',
     resume: 'Resume identity verification.'
   },
 
   // Bank account connect component
   bankAccountConnect: {
     addAccount: 'Adding account...',
-    success: 'Account successfully added.',
-    resume: 'Resume adding account.',
+    reconnectAccount: 'Reconnecting account...',
+    successAdded: 'Account successfully added.',
+    successReconnect: 'Account successfully reconnected.',
+    resumeAdding: 'Resume adding account.',
+    resumeConnect: 'Resume reconnecting account',
     mobile: {
       warning: 'Temporarily unavailable on mobile.',
       explanation: 'Please connect your bank account using a desktop browser.'
+    },
+
+    // Confirm dialog
+    confirm: {
+      title: 'Confirm Currency',
+      message: 'This account is in '
     }
+  },
+
+  // Bank account list component
+  bankAccountList: {
+    account: 'Account',
+    status: 'Status',
+    addAccount: 'ADD ACCOUNT',
+    empty: 'No bank accounts connected.',
+    error: 'Error fetching bank accounts.',
+    state: {
+      storing: 'Pending',
+      completed: 'Connected',
+      failed: 'Failed',
+      refresh_required: 'Refresh required',
+      deleting: 'Disconnecting...',
+      deleted: 'Disconnected'
+    },
+
+    // Details dialog
+    details: {
+      title: 'Account Details',
+      name: 'Name',
+      asset: 'Asset',
+      number: 'Number',
+      status: 'Status',
+      success: 'Disconnected',
+      error: 'Error disconnecting'
+    },
+
+    // Disconnect dialog
+    disconnect: {
+      title: 'Confirm Disconnect',
+      confirm: 'Please confirm removal of',
+      warning: 'Deposits will no longer be possible from this account'
+    }
+  },
+
+  // Transfer component
+  transfer: {
+    transfer: 'Transfer',
+    amount: 'Amount',
+    bankAccount: 'Bank Account',
+    deposit: 'Deposit',
+    withdraw: 'Withdraw',
+    withdrawal: 'Withdrawal',
+    processing: 'Processing',
+    noAccount: 'No bank accounts connected.',
+    addAccount: 'Add Account',
+    nonSufficientFunds: 'Non-sufficient funds',
+    error: 'Error creating transfer',
+
+    // Confirm dialog
+    confirm: {
+      confirm: 'Confirm',
+      depositDate: 'Deposit Date'
+    },
+
+    // Details dialog
+    details: {
+      details: 'Details',
+      state: 'State'
+    }
+  },
+
+  // Auth service
+  auth: {
+    expired: 'User session has expired. Please login again.'
   }
 };

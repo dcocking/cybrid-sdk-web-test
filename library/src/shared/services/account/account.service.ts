@@ -7,7 +7,8 @@ import {
   catchError,
   of,
   switchMap,
-  combineLatest
+  combineLatest,
+  take
 } from 'rxjs';
 
 // Client
@@ -20,10 +21,18 @@ import {
 } from '@cybrid/cybrid-api-bank-angular';
 
 // Services
-import { AssetService, Asset, ConfigService } from '@services';
+import {
+  AssetService,
+  Asset,
+  ConfigService,
+  LEVEL,
+  CODE,
+  EventService,
+  ErrorService
+} from '@services';
 
 // Utility
-import { symbolSplit } from '@utility';
+import { filterPrices, symbolBuild, symbolSplit } from '@utility';
 import { AssetPipe } from '@pipes';
 
 export interface Account {
@@ -36,6 +45,7 @@ export interface Account {
 
 export interface AccountOverview {
   accounts: Account[];
+  fiatAccount: AccountBankModel;
   balance: number;
 }
 
@@ -43,9 +53,14 @@ export interface AccountOverview {
   providedIn: 'root'
 })
 export class AccountService implements OnDestroy {
+  symbolSplit = symbolSplit;
+  filterPrices = filterPrices;
+
   private unsubscribe$ = new Subject();
 
   constructor(
+    private eventService: EventService,
+    private errorService: ErrorService,
     private accountsService: AccountsService,
     private pricesService: PricesService,
     private assetService: AssetService,
@@ -58,9 +73,9 @@ export class AccountService implements OnDestroy {
     this.unsubscribe$.complete();
   }
 
-  // Filter for 'trading' accounts
-  filterAccounts(): Observable<AccountBankModel[]> {
+  getAccounts(): Observable<AccountBankModel[]> {
     return this.configService.getConfig$().pipe(
+      take(1),
       switchMap((config) => {
         return this.accountsService.listAccounts(
           '',
@@ -70,23 +85,20 @@ export class AccountService implements OnDestroy {
           config.customer
         );
       }),
-      map((accounts) => {
-        return accounts.objects.filter((account) => {
-          return account.type == 'trading';
-        });
+      map((accounts) => accounts.objects),
+      catchError((err) => {
+        this.eventService.handleEvent(
+          LEVEL.ERROR,
+          CODE.DATA_ERROR,
+          'There was an error fetching accounts'
+        );
+
+        this.errorService.handleError(
+          new Error('There was an error fetching accounts')
+        );
+        return of(err);
       })
     );
-  }
-
-  // Filter for specific asset price
-  filterPrices(
-    prices: SymbolPriceBankModel[],
-    accountModel: AccountBankModel
-  ): SymbolPriceBankModel | undefined {
-    return prices.find((price) => {
-      const [asset] = symbolSplit(price.symbol!);
-      return asset == accountModel.asset;
-    });
   }
 
   // Returns asset and counter asset models
@@ -117,7 +129,7 @@ export class AccountService implements OnDestroy {
     counterAsset: string
   ): Observable<Account> {
     return combineLatest([
-      this.filterAccounts().pipe(
+      this.getAccounts().pipe(
         map((accounts) => {
           return accounts.find((account) => {
             return accountGuid == account.guid;
@@ -139,11 +151,16 @@ export class AccountService implements OnDestroy {
           pricesModel: SymbolPriceBankModel[]
         ] = combined;
 
-        const priceModel = pricesModel.find((price) => {
-          return (price.symbol = accountModel.asset);
-        });
         const assetModel = this.assetService.getAsset(accountModel.asset!);
         const counterAssetModel = this.assetService.getAsset(counterAsset);
+        const symbol = symbolBuild(
+          accountModel.asset!,
+          counterAssetModel.code!
+        );
+
+        const priceModel = pricesModel.find((price) => {
+          return price.symbol == symbol;
+        });
 
         const accountValue = this.getAccountValue(
           {
@@ -173,7 +190,7 @@ export class AccountService implements OnDestroy {
 
   getPortfolio(): Observable<AccountOverview> {
     return combineLatest([
-      this.filterAccounts().pipe(
+      this.getAccounts().pipe(
         catchError((err) => {
           return of(err);
         })
@@ -186,17 +203,23 @@ export class AccountService implements OnDestroy {
     ]).pipe(
       map((combined) => {
         const [accounts, prices] = combined;
+        const cryptoAccounts = accounts.filter(
+          (account: AccountBankModel) =>
+            account.type == AccountBankModel.TypeEnum.Trading
+        );
+        const fiatAccount: AccountBankModel = accounts.find(
+          (account: AccountBankModel) =>
+            account.type == AccountBankModel.TypeEnum.Fiat
+        );
 
         let portfolioBalance = 0;
         let tradingAccounts: Account[] = [];
 
-        accounts.forEach((accountModel: AccountBankModel) => {
-          const priceModel = this.filterPrices(prices, accountModel);
-
-          const [assetCode, counterAssetCode] = symbolSplit(prices[0].symbol!);
+        cryptoAccounts.forEach((accountModel: AccountBankModel) => {
+          const priceModel = this.filterPrices(prices, accountModel.asset!);
           const [assetModel, counterAssetModel] = this.getAccountAssets([
             accountModel.asset!,
-            counterAssetCode
+            fiatAccount.asset!
           ]);
 
           const accountValue = this.getAccountValue(
@@ -228,7 +251,11 @@ export class AccountService implements OnDestroy {
           portfolioBalance = portfolioBalance + account.value!;
         });
 
-        return { accounts: tradingAccounts, balance: portfolioBalance };
+        return {
+          accounts: tradingAccounts,
+          fiatAccount: fiatAccount,
+          balance: portfolioBalance
+        };
       }),
       catchError((err) => {
         return of(err);

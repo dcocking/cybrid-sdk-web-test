@@ -24,9 +24,14 @@ import {
   ConfigService,
   RoutingService
 } from '@services';
+import { Configuration } from '@cybrid/cybrid-api-bank-angular';
 
+// Components
 import { AppComponent } from '@components';
+
+// Utility
 import { Constants, TestConstants } from '@constants';
+import { environment } from '@environment';
 
 describe('AppComponent', () => {
   let MockAuthService = jasmine.createSpyObj('AuthService', [
@@ -49,13 +54,16 @@ describe('AppComponent', () => {
     'setConfig',
     'getConfig$',
     'getCustomer$',
-    'getBank$',
     'setComponent'
   ]);
   let MockRoutingService = jasmine.createSpyObj('RoutingService', [
     'handleRoute'
   ]);
   let MockRouter = jasmine.createSpyObj('Router', ['navigate']);
+
+  class MockConfiguration extends Configuration {
+    override basePath = environment.sandboxBankApiBasePath;
+  }
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -74,6 +82,7 @@ describe('AppComponent', () => {
         { provide: EventService, useValue: MockEventService },
         { provide: ErrorService, useValue: MockErrorService },
         { provide: ConfigService, useValue: MockConfigService },
+        { provide: Configuration, useClass: MockConfiguration },
         { provide: RoutingService, useValue: MockRoutingService },
         { provide: Router, useValue: MockRouter }
       ],
@@ -88,11 +97,8 @@ describe('AppComponent', () => {
     MockConfigService.getCustomer$.and.returnValue(
       of(TestConstants.CUSTOMER_BANK_MODEL)
     );
-    MockConfigService.getBank$.and.returnValue(
-      of(TestConstants.BANK_BANK_MODEL)
-    );
-    MockRoutingService = TestBed.inject(RoutingService);
     MockRouter = TestBed.inject(Router);
+    MockRouter.navigate.and.returnValue(Promise.resolve(true));
   });
 
   it('should create', () => {
@@ -116,30 +122,21 @@ describe('AppComponent', () => {
     const fixture = TestBed.createComponent(AppComponent);
     const component = fixture.componentInstance;
     const testConfig = TestConstants.CONFIG;
-    component.hostConfig = testConfig;
+    component.config = testConfig;
     tick();
     expect(MockConfigService.setConfig).toHaveBeenCalledWith(testConfig);
   }));
 
-  it('should set the current component', () => {
+  it('should set the current component', fakeAsync(() => {
     const fixture = TestBed.createComponent(AppComponent);
     const component = fixture.componentInstance;
 
-    MockConfigService.component$ = () => {};
-
-    // Test default currentComponent
     component.initNavigation();
     component.component = Constants.DEFAULT_COMPONENT;
+    tick();
 
-    expect(MockRouter.navigate).toHaveBeenCalled();
     expect(MockRoutingService.handleRoute).toHaveBeenCalled();
-
-    // Set currentComponent
-    component.component = 'test';
-
-    expect(MockRouter.navigate).toHaveBeenCalled();
-    expect(MockRoutingService.handleRoute).toHaveBeenCalled();
-  });
+  }));
 
   it('should call init functions in ngOnInit()', () => {
     const fixture = TestBed.createComponent(AppComponent);

@@ -1,30 +1,26 @@
 version: 2.1
 
 orbs:
-  node: circleci/node@5.0.3
-  browser-tools: circleci/browser-tools@1.4.0
+  node: circleci/node@5.1.0
+  browser-tools: circleci/browser-tools@1.4.1
   cypress: cypress-io/cypress@2.2.0
-  codecov: codecov/codecov@3.2.4
+  codecov: codecov/codecov@3.2.5
   jq: circleci/jq@2.2.0
 
 executors:
   cypress:
     docker:
-      - image: cypress/base:18.12.0
+      - image: cypress/base:18.15.0
 
 jobs:
   publish:
     docker:
-      - image: cimg/node:16.18.1
+      - image: cimg/node:19.9.0
     working_directory: ~/project
     steps:
       - checkout
-      - run:
-          name: Install node modules
-          command: npm install
-      - run:
-          name: Package library
-          command: npm run package:library
+      - attach_workspace:
+          at: .
       - run:
           name: Update version tag
           command: |
@@ -41,7 +37,7 @@ jobs:
 
   check-versions:
     docker:
-      - image: cimg/node:16.18.1
+      - image: cimg/node:19.9.0
     working_directory: ~/project
     steps:
       - checkout
@@ -50,7 +46,7 @@ jobs:
           command: |
             export LATEST=$(curl https://registry.npmjs.org/persona/latest | jq -r '. | .version')
             export CURRENT=$(grep 'PERSONA' -A 1 library/src/shared/constants/constants.ts | grep 'https' | sed 's/.*-v\(.*\).js.*/\1/')
-            if [[ "$LATEST" = "$CURRENT" ]]; then
+            if [[ "$LATEST" == "$CURRENT" || "$LATEST" == "4.8.0" ]]; then
               echo "Persona is up to date."
             else
               echo "Error: new Persona version available."
@@ -59,7 +55,7 @@ jobs:
 
   deploy-demo:
     docker:
-      - image: cimg/node:16.18.1
+      - image: cimg/node:19.9.0
     steps:
       - run:
           name: Trigger Github workflow
@@ -76,7 +72,7 @@ workflows:
       - check-versions
       - node/test:
           name: test
-          version: 16.14.2-browsers
+          version: 16.20.0-browsers
           cache-version: v2
           setup:
             - browser-tools/install-chrome
@@ -94,17 +90,29 @@ workflows:
             - run:
                 command: npm audit --audit-level=high
                 name: Audit
+            - run:
+                command: npm run package:library
+                name: Build library
+            - persist_to_workspace:
+                root: .
+                paths:
+                  - dist/library
 
       - cypress/run:
           name: e2e chromium@101.0.4951.64
+          requires:
+            - test
           executor: cypress
           post-checkout:
+            - attach_workspace:
+                at: .
             - run:
                 name: Install wget/unzip
                 command: |
                   apt update -y
                   apt-get install -y wget
                   apt-get install -y unzip
+                  apt-get install -y ca-certificates
             - run:
                 name: Download/Install Chromium
                 command: |
@@ -118,14 +126,19 @@ workflows:
 
       - cypress/run:
           name: e2e chromium@102.0.5005.61
+          requires:
+            - test
           executor: cypress
           post-checkout:
+            - attach_workspace:
+                at: .
             - run:
                 name: Install wget/unzip
                 command: |
                   apt update -y
                   apt-get install -y wget
                   apt-get install -y unzip
+                  apt-get install -y ca-certificates
             - run:
                 name: Download/Install Chromium
                 command: |
@@ -139,13 +152,17 @@ workflows:
 
       - cypress/run:
           name: e2e chrome@latest
+          requires:
+            - test
           executor: cypress
           post-checkout:
+            - attach_workspace:
+                at: .
             - run:
                 name: Install libraries
                 command: |
                   apt update -y
-                  apt install -y software-properties-common apt-transport-https wget fonts-liberation xdg-utils gnupg
+                  apt install -y software-properties-common apt-transport-https wget fonts-liberation xdg-utils gnupg libu2f-udev
             - run:
                 name: Download/Install Chrome stable
                 command: |
@@ -155,14 +172,17 @@ workflows:
                   dpkg -i google-chrome-stable_current_amd64.deb
           start: npm start
           command: npx cypress run --browser chrome
-          no-workspace: true
           wait-on: http://localhost:4200
           store_artifacts: true
 
       - cypress/run:
           name: e2e edge@latest
+          requires:
+            - test
           executor: cypress
           post-checkout:
+            - attach_workspace:
+                at: .
             - run:
                 name: Install libraries
                 command: |
@@ -183,6 +203,7 @@ workflows:
 
       - publish:
           requires:
+            - test
             - e2e chromium@101.0.4951.64
             - e2e chromium@102.0.5005.61
             - e2e chrome@latest

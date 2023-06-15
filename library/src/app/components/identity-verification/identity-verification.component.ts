@@ -1,13 +1,5 @@
-import {
-  Component,
-  Inject,
-  OnDestroy,
-  OnInit,
-  Renderer2,
-  ViewChild
-} from '@angular/core';
+import { Component, Inject, OnDestroy, OnInit, Renderer2 } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
-import { MatStepper } from '@angular/material/stepper';
 
 import {
   BehaviorSubject,
@@ -20,7 +12,8 @@ import {
   Subject,
   switchMap,
   take,
-  takeUntil
+  takeUntil,
+  tap
 } from 'rxjs';
 
 // Services
@@ -51,14 +44,16 @@ import { Constants } from '@constants';
   styleUrls: ['./identity-verification.component.scss']
 })
 export class IdentityVerificationComponent implements OnInit, OnDestroy {
-  @ViewChild('stepper') stepper!: MatStepper;
-
   identity$ =
     new BehaviorSubject<IdentityVerificationWithDetailsBankModel | null>(null);
   customer$ = new BehaviorSubject<CustomerBankModel | null>(null);
+  personaClient: BehaviorSubject<any | null> = new BehaviorSubject(null);
 
+  identityVerificationGuid: string | undefined;
+
+  isVerifying: boolean = false;
+  isCanceled: boolean = false;
   isLoading$ = new BehaviorSubject(true);
-  isRecoverable$ = new BehaviorSubject(true);
   error$ = new BehaviorSubject(false);
 
   pollConfig: PollConfig = {
@@ -95,6 +90,12 @@ export class IdentityVerificationComponent implements OnInit, OnDestroy {
     this.unsubscribe$.complete();
   }
 
+  /**
+   * Gets the customer and polls on the customer status
+   *
+   * Skips customer with a state of storing
+   * Handles customer that returns a non-storing state, else returns an error
+   **/
   getCustomerStatus(): void {
     const poll = new Poll(this.pollConfig);
 
@@ -106,8 +107,8 @@ export class IdentityVerificationComponent implements OnInit, OnDestroy {
         skipWhile((customer) => customer.state === 'storing'),
         map((customer) => {
           poll.stop();
-          this.customer$.next(customer);
-          this.isLoading$.next(false);
+          this.isVerifying = true;
+          this.handleCustomerState(customer);
         }),
         catchError((err) => {
           this.error$.next(true);
@@ -126,31 +127,52 @@ export class IdentityVerificationComponent implements OnInit, OnDestroy {
       .subscribe();
   }
 
+  handleCustomerState(customer: CustomerBankModel): void {
+    switch (customer.state) {
+      case 'unverified':
+        this.verifyIdentity();
+        break;
+      case 'verified':
+        this.customer$.next(customer);
+        this.isLoading$.next(false);
+        break;
+      case 'rejected':
+        this.customer$.next(customer);
+        this.isLoading$.next(false);
+        break;
+      default:
+        this.error$.next(true);
+    }
+  }
+
+  /**
+   * Creates an identity verification and polls on the status
+   *
+   * Skips IDV with a state of storing
+   * Handles IDV that returns a non-storing state, else returns an error
+   **/
   verifyIdentity(): void {
-    const poll = new Poll(this.pollConfig);
     this.isLoading$.next(true);
 
-    poll
-      .start()
+    const poll = new Poll(this.pollConfig);
+
+    this.identityVerificationService
+      .createIdentityVerification()
       .pipe(
+        switchMap((identity) => {
+          this.identityVerificationGuid = identity.guid;
+          return poll.start();
+        }),
         switchMap(() =>
-          this.identityVerificationService.getIdentityVerification()
+          this.identityVerificationService.getIdentityVerification(
+            this.identityVerificationGuid!
+          )
         ),
         takeUntil(merge(poll.session$, this.unsubscribe$)),
-        // Continues polling if the verification is 'storing',
-        // or if the Persona state is 'completed', but there is no 'outcome'
-        skipWhile(
-          (identity) =>
-            identity.state == 'storing' ||
-            (identity.state == 'waiting' &&
-              identity.persona_state == 'completed') ||
-            (identity.state == 'waiting' &&
-              identity.persona_state == 'processing')
-        ),
+        skipWhile((identity) => identity.state == 'storing'),
         map((identity) => {
           poll.stop();
           this.handleIdentityVerificationState(identity);
-          this.identity$.next(identity);
         }),
         catchError((err) => {
           this.error$.next(true);
@@ -172,13 +194,55 @@ export class IdentityVerificationComponent implements OnInit, OnDestroy {
     identity: IdentityVerificationBankModel
   ): void {
     switch (identity.state) {
-      case 'completed':
-        this.isLoading$.next(false);
-        break;
       case 'waiting':
         this.handlePersonaState(identity);
         break;
+      case 'completed':
+        this.isLoading$.next(false);
+        this.identity$.next(identity);
+        break;
     }
+  }
+
+  /**
+   * Checks identity status by polling on GET identity_verifications
+   *
+   * Skips an IDV with an outcome of null for the duration of the polling period
+   * Sets and IDV with a non-null outcome, or after the polling duration
+   *
+   **/
+  checkIdentity(): void {
+    let currentIdentity: IdentityVerificationWithDetailsBankModel;
+
+    const poll = new Poll({
+      timeout: new BehaviorSubject<boolean>(false),
+      duration: Constants.POLL_DURATION,
+      interval: Constants.POLL_INTERVAL
+    });
+
+    poll
+      .start()
+      .pipe(
+        switchMap(() => {
+          return this.identityVerificationService.getIdentityVerification(
+            this.identityVerificationGuid!
+          );
+        }),
+        tap((identity) => (currentIdentity = identity)),
+        takeUntil(
+          merge(poll.session$, this.unsubscribe$).pipe(
+            map(() => {
+              this.handleIdentityVerificationState(currentIdentity);
+            })
+          )
+        ),
+        skipWhile((identity) => !identity.outcome),
+        map((identity) => {
+          poll.stop();
+          this.handleIdentityVerificationState(identity);
+        })
+      )
+      .subscribe();
   }
 
   handlePersonaState(identity: IdentityVerificationWithDetailsBankModel): void {
@@ -190,6 +254,18 @@ export class IdentityVerificationComponent implements OnInit, OnDestroy {
         this.bootstrapPersona(identity.persona_inquiry_id!);
         break;
       case 'reviewing':
+        this.identity$.next(identity);
+        this.isLoading$.next(false);
+        break;
+      case 'processing':
+        this.identity$.next(identity);
+        this.isLoading$.next(false);
+        break;
+      case 'expired':
+        this.getCustomerStatus();
+        break;
+      case 'completed':
+        this.identity$.next(identity);
         this.isLoading$.next(false);
         break;
       case 'unknown':
@@ -202,40 +278,37 @@ export class IdentityVerificationComponent implements OnInit, OnDestroy {
   }
 
   personaOnReady(client: any) {
-    this.identityVerificationService.setPersonaClient(client);
+    this.personaClient.next(client);
     client.open();
   }
 
   personaOnComplete(): void {
-    this.verifyIdentity();
+    this.checkIdentity();
   }
 
   personaOnCancel(client: any): void {
-    this.identityVerificationService.setPersonaClient(client);
+    // Reset in memory client
+    client.options.inquiryId = null;
+    this.personaClient.next(client);
+
+    this.isCanceled = true;
     this.isLoading$.next(false);
-    this.stepper.next();
   }
 
   personaOnError(error: any) {
     this.error$.next(true);
     this.eventService.handleEvent(
       LEVEL.ERROR,
-      CODE.DATA_ERROR,
+      CODE.PERSONA_SDK_ERROR,
       'There was an error in the Persona SDK',
       error
     );
-    this.errorService.handleError(
-      new Error(`There was an error in the Persona SDK: ${error}`)
-    );
+    this.errorService.handleError(new Error(CODE.PERSONA_SDK_ERROR));
   }
 
   bootstrapPersona(inquiryId: string): void {
-    this.identityVerificationService
-      .getPersonaClient()
+    combineLatest([this.personaClient, this.configService.getConfig$()])
       .pipe(
-        switchMap((personaClient) =>
-          combineLatest([of(personaClient), this.configService.getConfig$()])
-        ),
         take(1),
         map((obj) => {
           const [personaClient, config] = obj;
@@ -259,6 +332,7 @@ export class IdentityVerificationComponent implements OnInit, OnDestroy {
             });
           } else {
             // Re-initialize local references and open client
+            personaClient.options.inquiryId = inquiryId;
             personaClient.options.language = this.getPersonaLanguageAlias(
               config.locale
             );

@@ -8,25 +8,26 @@ import {
   map,
   Observable,
   ReplaySubject,
-  startWith,
   Subject,
   switchMap,
   takeUntil,
-  tap,
   timer
 } from 'rxjs';
 
 // Services
 import { ErrorService, CODE, EventService, LEVEL } from '@services';
 import {
-  BankBankModel,
   BanksService,
+  Configuration,
   CustomerBankModel,
   CustomersService
 } from '@cybrid/cybrid-api-bank-angular';
 
 // Utility
 import { Constants } from '@constants';
+import { environment } from '@environment';
+
+export type Environment = 'local' | 'staging' | 'sandbox' | 'production';
 
 export interface ComponentConfig {
   refreshInterval: number;
@@ -35,6 +36,9 @@ export interface ComponentConfig {
   routing: boolean;
   customer: string; // Temporary solution until the JWT embeds a customer GUID
   fiat: string;
+  features: Array<string>;
+  environment: Environment;
+  redirectUri?: string;
 }
 
 @Injectable({
@@ -47,7 +51,6 @@ export class ConfigService implements OnDestroy {
   component$ = new ReplaySubject<string>(1);
 
   customer$ = new ReplaySubject<CustomerBankModel>(1);
-  bank$ = new ReplaySubject<BankBankModel>(1);
 
   private unsubscribe$ = new Subject();
 
@@ -57,7 +60,8 @@ export class ConfigService implements OnDestroy {
     private translateService: TranslateService,
     private overlay: OverlayContainer,
     private banksService: BanksService,
-    private customersService: CustomersService
+    private customersService: CustomersService,
+    private configuration: Configuration
   ) {
     this.initLocale();
     this.initStyle();
@@ -70,7 +74,7 @@ export class ConfigService implements OnDestroy {
   }
 
   setConfig(hostConfig: ComponentConfig) {
-    if (this.validateConfig(hostConfig)) {
+    if (this.validateConfig(hostConfig) && this.setEnvironment(hostConfig)) {
       this.eventService.handleEvent(
         LEVEL.INFO,
         CODE.CONFIG_SET,
@@ -109,6 +113,7 @@ export class ConfigService implements OnDestroy {
     const routing = (hostConfig as ComponentConfig).routing;
     const customer = (hostConfig as ComponentConfig).customer;
     const fiat = (hostConfig as ComponentConfig).fiat;
+    const environment = (hostConfig as ComponentConfig).environment;
     return (
       refreshInterval !== undefined &&
       refreshInterval !== null &&
@@ -122,20 +127,37 @@ export class ConfigService implements OnDestroy {
       customer !== null &&
       customer !== undefined &&
       fiat !== null &&
-      fiat !== undefined
+      fiat !== undefined &&
+      environment !== null &&
+      environment !== undefined
     );
+  }
+
+  setEnvironment(config: ComponentConfig): boolean {
+    switch (config.environment) {
+      case 'local':
+        this.configuration.basePath = environment.localBankApiBasePath;
+        return true;
+      case 'staging':
+        this.configuration.basePath = environment.stagingBankApiBasePath;
+        return true;
+      case 'sandbox':
+        this.configuration.basePath = environment.sandboxBankApiBasePath;
+        return true;
+      case 'production':
+        this.configuration.basePath = environment.productionBankApiBasePath;
+        return true;
+    }
   }
 
   initLocale(): void {
     this.translateService.setTranslation('en-US', en);
     this.translateService.setTranslation('fr-CA', fr);
     this.translateService.setDefaultLang(Constants.LOCALE);
-    this.config$
+    this.getConfig$()
       .pipe(
-        takeUntil(this.unsubscribe$),
-        map((config) => {
-          this.translateService.use(config!.locale);
-        })
+        map((config) => this.translateService.use(config.locale)),
+        takeUntil(this.unsubscribe$)
       )
       .subscribe();
   }
@@ -147,14 +169,16 @@ export class ConfigService implements OnDestroy {
     Toggles dark mode theme for Angular Material components that use overlays
     outside the scope of other component styles
     * */
-    this.config$
+    this.getConfig$()
       .pipe(
-        takeUntil(this.unsubscribe$),
         map((config) => {
           const container = this.overlay.getContainerElement();
 
           // Angular Material typography styles
           container.classList.add('mat-typography');
+
+          // Global styles
+          container.classList.add('cybrid-global');
 
           // Selected theme styles
           if (config!.theme === 'DARK') {
@@ -164,7 +188,8 @@ export class ConfigService implements OnDestroy {
             container.classList.remove('cybrid-dark-theme');
             container.classList.add('cybrid-light-theme');
           }
-        })
+        }),
+        takeUntil(this.unsubscribe$)
       )
       .subscribe();
   }
@@ -172,20 +197,13 @@ export class ConfigService implements OnDestroy {
   initPlatformData(): void {
     timer(0, Constants.PLATFORM_REFRESH_INTERVAL)
       .pipe(
-        startWith(0),
         takeUntil(this.unsubscribe$),
         switchMap(() => this.config$),
         switchMap((config) => {
           return this.customersService.getCustomer(config.customer);
         }),
-        tap((customer: CustomerBankModel) => {
+        map((customer: CustomerBankModel) => {
           this.customer$.next(customer);
-        }),
-        switchMap((customer: CustomerBankModel) =>
-          this.banksService.getBank(customer.bank_guid!)
-        ),
-        tap((bank) => {
-          this.bank$.next(bank);
         })
       )
       .subscribe();
@@ -193,9 +211,5 @@ export class ConfigService implements OnDestroy {
 
   getCustomer$(): Observable<CustomerBankModel> {
     return this.customer$.asObservable();
-  }
-
-  getBank$(): Observable<BankBankModel> {
-    return this.bank$.asObservable();
   }
 }

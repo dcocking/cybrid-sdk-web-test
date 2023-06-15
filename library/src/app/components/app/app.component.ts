@@ -3,6 +3,7 @@ import {
   Component,
   EventEmitter,
   Input,
+  OnDestroy,
   OnInit,
   Output
 } from '@angular/core';
@@ -34,6 +35,7 @@ import {
   CODE,
   LEVEL
 } from '@services';
+import { Configuration } from '@cybrid/cybrid-api-bank-angular';
 
 @Component({
   selector: 'app-app',
@@ -41,28 +43,28 @@ import {
   styleUrls: ['./app.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   @Output() eventLog = new EventEmitter<EventLog>();
   @Output() errorLog = new EventEmitter<ErrorLog>();
+
   @Input()
   set auth(token: string) {
     this.authService.setToken(token);
   }
   @Input()
-  set hostConfig(config: ComponentConfig) {
+  set config(config: ComponentConfig) {
     this.configService.setConfig(config);
   }
   @Input()
   set component(selector: string) {
-    this.configService.setComponent(selector);
-    this.currentComponent$.next(selector);
+    this.component$.next(selector);
   }
 
-  currentComponent$ = new ReplaySubject<string>(1);
-
-  private unsubscribe$ = new Subject();
+  component$ = new ReplaySubject<string>(1);
+  unsubscribe$ = new Subject();
 
   constructor(
+    public configuration: Configuration,
     private router: Router,
     private authService: AuthService,
     private assetService: AssetService,
@@ -80,7 +82,6 @@ export class AppComponent implements OnInit {
     combineLatest([
       this.configService.getConfig$(),
       this.configService.getCustomer$(),
-      this.configService.getBank$(),
       this.assetService.getAssets$()
     ])
       .pipe(
@@ -108,6 +109,12 @@ export class AppComponent implements OnInit {
       .subscribe(() => {
         this.initNavigation();
       });
+  }
+
+  ngOnDestroy() {
+    this.unsubscribe$.next('');
+    this.unsubscribe$.complete();
+    this.router.navigate(['/']);
   }
 
   initEventService(): void {
@@ -154,14 +161,10 @@ export class AppComponent implements OnInit {
   }
 
   initNavigation(): void {
-    this.currentComponent$
+    this.component$
       .pipe(
         takeUntil(this.unsubscribe$),
         map((component) => {
-          // Navigates whenever component is set
-          this.router.navigate(['app/' + component]);
-
-          // Handles host navigation request for events
           this.routingService.handleRoute({
             route: component,
             origin: 'cybrid-app'
