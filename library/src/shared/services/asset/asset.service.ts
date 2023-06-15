@@ -9,13 +9,14 @@ import {
   switchMap,
   catchError,
   of,
-  ReplaySubject
+  ReplaySubject,
+  take
 } from 'rxjs';
 import { CODE, EventService, LEVEL } from '../event/event.service';
 import { ErrorService } from '../error/error.service';
 import { AssetBankModel } from '@cybrid/cybrid-api-bank-angular/model/asset';
-import { AuthService } from '../auth/auth.service';
-import { Constants } from '../../constants/constants';
+import { ConfigService } from '../config/config.service';
+import { Constants } from '@constants';
 
 export interface Asset extends AssetBankModel {
   type: AssetBankModel.TypeEnum;
@@ -30,12 +31,15 @@ export interface Asset extends AssetBankModel {
   providedIn: 'root'
 })
 export class AssetService {
+  assets$: ReplaySubject<AssetBankModel[]> = new ReplaySubject<
+    AssetBankModel[]
+  >(1);
   assetList$ = new ReplaySubject<Asset[]>(1);
   assetList: Asset[] = [];
 
   constructor(
     private assetsService: AssetsService,
-    private authService: AuthService,
+    private configService: ConfigService,
     private eventService: EventService,
     private errorService: ErrorService
   ) {
@@ -43,11 +47,13 @@ export class AssetService {
   }
 
   initAssets(): void {
-    this.authService
-      .getToken$()
+    this.configService
+      .getConfig$()
       .pipe(
+        take(1),
         switchMap(() => this.assetsService.listAssets()),
         map((list: AssetListBankModel) => {
+          this.assets$.next(list.objects);
           const assetList: Asset[] = list.objects.map(
             (asset: AssetBankModel) => {
               return {

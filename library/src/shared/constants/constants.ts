@@ -19,11 +19,13 @@ export class Constants {
   static AUTH_EXPIRATION_WARNING = 120;
   static MIN_INTEGER_DIGITS = 0;
   static MIN_FRACTION_DIGITS = 2;
+  static TRADING_MIN_INTEGER_DIGITS = 0;
+  static TRADING_MIN_FRACTION_DIGITS = 0;
   static THEME = THEME.LIGHT;
   static ROUTING = true;
   static ICON_HOST = 'https://images.cybrid.xyz/sdk/assets/svg/color/';
   static PERSONA_SCRIPT_SRC =
-    'https://cdn.withpersona.com/dist/persona-v4.7.1.js';
+    'https://cdn.withpersona.com/dist/persona-v4.8.0-alpha.js';
   static PLAID_SCRIPT_SRC =
     'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
   static BTC_ICON = 'https://images.cybrid.xyz/sdk/assets/svg/color/btc.svg';
@@ -50,9 +52,47 @@ export class Constants {
     theme: Constants.THEME,
     routing: Constants.ROUTING,
     customer: '',
-    fiat: 'USD'
+    fiat: '',
+    features: [],
+    environment: 'sandbox'
   };
   static DEFAULT_COMPONENT = 'price-list';
   static POLL_DURATION = 5000;
   static POLL_INTERVAL = 1000;
+  static COMPONENTS_PLAID = [
+    'price-list',
+    'trade',
+    'account-list',
+    'account-details',
+    'identity-verification',
+    'bank-account-connect',
+    'bank-account-list',
+    'transfer'
+  ];
+  static COMPONENTS_BACKSTOPPED = [
+    'price-list',
+    'trade',
+    'account-list',
+    'account-details',
+    'identity-verification'
+  ];
+  static COMPONENTS_ATTESTATION = [
+    'price-list',
+    'trade',
+    'account-list',
+    'account-details',
+    'bank-account-connect',
+    'bank-account-list',
+    'transfer'
+  ];
+  static COMPONENTS_KYC = [
+    'price-list',
+    'trade',
+    'account-list',
+    'account-details',
+    'identity-verification',
+    'bank-account-connect',
+    'bank-account-list',
+    'transfer'
+  ];
 }

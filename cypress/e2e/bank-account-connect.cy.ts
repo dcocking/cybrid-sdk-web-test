@@ -1,5 +1,6 @@
 import * as translations from 'library/src/shared/i18n/en';
 import { Plaid } from '../support/plaid';
+import { TestConstants } from '@constants';
 
 const text = translations.default;
 
@@ -27,16 +28,28 @@ function bankAccountConnectSetup() {
 
 describe('bank-account-connect test', () => {
   beforeEach(() => {
-    cy.visit('/');
     //@ts-ignore
-    cy.login();
+    cy.authenticate();
+    cy.visit('/');
+
+    cy.intercept('POST', '/api/workflows', (req) => {
+      req.reply(TestConstants.WORKFLOW_BANK_MODEL);
+    }).as('postWorkflow');
+    cy.intercept('GET', '/api/workflows/*', (req) => {
+      req.reply(TestConstants.WORKFLOW_BANK_MODEL_WITH_DETAILS);
+    }).as('getWorkflow');
+    cy.intercept('POST', '/api/external_bank_accounts', (req) => {
+      req.reply({});
+    });
+    cy.intercept('POST', '/link/heartbeat').as('heartbeat');
+    cy.intercept('POST', '/link/workflow/next', (req) => {
+      req.reply(Plaid.PLAID_NEXT_ON_SUCCESS);
+    });
+
+    bankAccountConnectSetup();
   });
 
   it('should add an account', () => {
-    cy.intercept('POST', '/api/workflows').as('postWorkflow');
-
-    bankAccountConnectSetup();
-
     cy.wait('@postWorkflow').then(() => {
       app().get('app-loading').should('exist');
       app().find('#bank-connect-button-done').should('be.disabled');
@@ -49,6 +62,11 @@ describe('bank-account-connect test', () => {
       req.reply({ forceNetworkError: true });
     }).as('getPlaidLink');
 
+    cy.intercept('POST', '/link/workflow/next', (req) => {
+      req.reply({ forceNetworkError: true });
+    });
+
+    cy.visit('/');
     bankAccountConnectSetup();
 
     cy.wait('@getPlaidLink').then(() => {
@@ -57,10 +75,16 @@ describe('bank-account-connect test', () => {
   });
 
   it('should allow resume on Plaid exit', () => {
-    // Indicates Plaid app is open
-    cy.intercept('POST', '/link/heartbeat').as('heartbeat');
+    // Set mock Plaid iso_currency_code to undefined
+    let mockPlaidSuccess = { ...Plaid };
+    // @ts-ignore
+    mockPlaidSuccess.PLAID_NEXT_ON_SUCCESS.next_pane.sink.result.metadata.accounts[0][
+      'iso_currency_code'
+    ] = undefined;
 
-    bankAccountConnectSetup();
+    cy.intercept('POST', '/link/workflow/next', (req) => {
+      req.reply(mockPlaidSuccess.PLAID_NEXT_ON_SUCCESS);
+    });
 
     // Exit Plaid
     cy.wait('@heartbeat').then(() => {
@@ -68,17 +92,26 @@ describe('bank-account-connect test', () => {
     });
 
     // Resume
-    app().get('strong').should('contain.text', text.bankAccountConnect.resume);
+    cy.get('mat-dialog-container').contains(text.cancel).click();
+    app()
+      .get('strong')
+      .should('contain.text', text.bankAccountConnect.resumeAdding);
     app().get('button').contains(text.resume).click();
 
     app().get('app-bank-account-connect').find('app-loading').should('exist');
   });
 
   it('should cancel on Plaid exit', () => {
-    // Indicates Plaid app is open
-    cy.intercept('POST', '/link/heartbeat').as('heartbeat');
+    // Set mock Plaid iso_currency_code to undefined
+    let mockPlaidSuccess = { ...Plaid };
+    // @ts-ignore
+    mockPlaidSuccess.PLAID_NEXT_ON_SUCCESS.next_pane.sink.result.metadata.accounts[0][
+      'iso_currency_code'
+    ] = undefined;
 
-    bankAccountConnectSetup();
+    cy.intercept('POST', '/link/workflow/next', (req) => {
+      req.reply(mockPlaidSuccess.PLAID_NEXT_ON_SUCCESS);
+    });
 
     // Exit Plaid
     cy.wait('@heartbeat').then(() => {
@@ -86,18 +119,69 @@ describe('bank-account-connect test', () => {
     });
 
     // Cancel
-    app().get('strong').should('contain.text', text.bankAccountConnect.resume);
+    cy.get('mat-dialog-container').contains(text.cancel).click();
+    app()
+      .get('strong')
+      .should('contain.text', text.bankAccountConnect.resumeAdding);
     app().get('button').contains(text.cancel).click();
 
     app().should('not.exist');
   });
 
-  it('should handle success from Plaid', () => {
+  it('should handle success from Plaid with defined iso_currency_code', () => {
+    cy.wait('@heartbeat').then(() => {
+      plaid().find('button').last().click();
+    });
+
+    cy.get('mat-dialog-container').contains(text.confirm).click();
+    app()
+      .find('strong')
+      .should('contain.text', text.bankAccountConnect.successAdded);
+
+    // Navigate
+    app().find('button').contains(text.done).click();
+    app().should('not.exist');
+  });
+
+  it('should open confirm dialog on success from Plaid with undefined iso_currency_code', () => {
+    // Set mock Plaid iso_currency_code to undefined
+    let mockPlaidSuccess = { ...Plaid };
+    // @ts-ignore
+    mockPlaidSuccess.PLAID_NEXT_ON_SUCCESS.next_pane.sink.result.metadata.accounts[0][
+      'iso_currency_code'
+    ] = undefined;
+
+    cy.intercept('POST', '/link/workflow/next', (req) => {
+      req.reply(mockPlaidSuccess.PLAID_NEXT_ON_SUCCESS);
+    });
+
+    // Continue
+    cy.wait('@heartbeat').then(() => {
+      plaid().find('button').last().click();
+    });
+
+    cy.get('h1').should('contain.text', text.bankAccountConnect.confirm.title);
+    cy.get('p')
+      .first()
+      .should('contain.text', text.bankAccountConnect.confirm.message);
+
+    // Cancel
+    cy.get('mat-dialog-container').contains(text.cancel).click();
+  });
+
+  it('should add external bank account on confirm in the confirm dialog', () => {
     // Indicates Plaid app is open
     cy.intercept('POST', '/link/heartbeat').as('heartbeat');
 
+    // Set mock Plaid iso_currency_code to undefined
+    let mockPlaidSuccess = { ...Plaid };
+    // @ts-ignore
+    mockPlaidSuccess.PLAID_NEXT_ON_SUCCESS.next_pane.sink.result.metadata.accounts[0][
+      'iso_currency_code'
+    ] = undefined;
+
     cy.intercept('POST', '/link/workflow/next', (req) => {
-      req.reply(Plaid.PLAID_NEXT_ON_SUCCESS);
+      req.reply(mockPlaidSuccess.PLAID_NEXT_ON_SUCCESS);
     });
 
     // Stop creation of external bank account
@@ -105,16 +189,17 @@ describe('bank-account-connect test', () => {
       req.reply({});
     });
 
-    bankAccountConnectSetup();
-
     // Continue
     cy.wait('@heartbeat').then(() => {
       plaid().find('button').last().click();
     });
 
+    // Confirm
+    cy.get('mat-dialog-container').contains(text.confirm).click();
+
     app()
       .find('strong')
-      .should('contain.text', text.bankAccountConnect.success);
+      .should('contain.text', text.bankAccountConnect.successAdded);
 
     // Navigate
     app().find('button').contains(text.done).click();

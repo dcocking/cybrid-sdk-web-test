@@ -1,19 +1,36 @@
 import { Injectable, OnDestroy } from '@angular/core';
 
-import { BehaviorSubject, map, Observable, Subject, takeUntil } from 'rxjs';
-
 import {
+  BehaviorSubject,
+  catchError,
+  map,
+  Observable,
+  of,
+  Subject,
+  takeUntil
+} from 'rxjs';
+
+// Services
+import {
+  CODE,
+  ConfigService,
+  ErrorService,
+  EventService,
+  LEVEL
+} from '@services';
+
+// Models
+import {
+  ExternalBankAccountBankModel,
   ExternalBankAccountListBankModel,
   ExternalBankAccountsService,
+  PatchExternalBankAccountBankModel,
   PostExternalBankAccountBankModel,
   PostWorkflowBankModel,
   WorkflowBankModel,
   WorkflowsService,
   WorkflowWithDetailsBankModel
 } from '@cybrid/cybrid-api-bank-angular';
-
-// Services
-import { ConfigService } from '@services';
 
 // Utility
 import { getLanguageFromLocale } from '../../utility/locale-language';
@@ -34,8 +51,9 @@ export class BankAccountService implements OnDestroy {
 
   postWorkflowBankModel: PostWorkflowBankModel = {
     type: 'plaid',
-    kind: 'link_token_create',
+    kind: PostWorkflowBankModel.KindEnum.Create,
     customer_guid: '',
+    external_bank_account_guid: undefined,
     link_customization_name: 'default'
   };
 
@@ -46,7 +64,9 @@ export class BankAccountService implements OnDestroy {
   constructor(
     private configService: ConfigService,
     private externalBankAccountService: ExternalBankAccountsService,
-    private workflowService: WorkflowsService
+    private workflowService: WorkflowsService,
+    private eventService: EventService,
+    private errorService: ErrorService
   ) {
     this.setModels();
   }
@@ -66,6 +86,7 @@ export class BankAccountService implements OnDestroy {
 
           this.postExternalBankAccountModel.customer_guid = config.customer;
           this.postWorkflowBankModel.customer_guid = config.customer;
+          this.postWorkflowBankModel.redirect_uri = config.redirectUri;
           this.postWorkflowBankModel.language = getLanguageFromLocale(
             config.locale
           ) as PostWorkflowBankModel.LanguageEnum;
@@ -78,13 +99,22 @@ export class BankAccountService implements OnDestroy {
     page?: string,
     perPage?: string
   ): Observable<ExternalBankAccountListBankModel> {
-    return this.externalBankAccountService.listExternalBankAccounts(
-      page,
-      perPage,
-      undefined,
-      undefined,
-      this.customerGuid
-    );
+    return this.externalBankAccountService
+      .listExternalBankAccounts(
+        page,
+        perPage,
+        undefined,
+        undefined,
+        this.customerGuid
+      )
+      .pipe(
+        catchError((err) => {
+          const message = 'There was an error fetching bank account details';
+          this.eventService.handleEvent(LEVEL.ERROR, CODE.DATA_ERROR, message);
+          this.errorService.handleError(err);
+          return of(err);
+        })
+      );
   }
 
   createExternalBankAccount(
@@ -99,17 +129,76 @@ export class BankAccountService implements OnDestroy {
     postExternalBankAccount.plaid_account_id = plaid_account_id;
     postExternalBankAccount.asset = asset;
 
-    return this.externalBankAccountService.createExternalBankAccount(
-      postExternalBankAccount
-    );
+    return this.externalBankAccountService
+      .createExternalBankAccount(postExternalBankAccount)
+      .pipe(
+        catchError((err: any) => {
+          const message = 'There was an error creating a bank account';
+          this.eventService.handleEvent(LEVEL.ERROR, CODE.DATA_ERROR, message);
+          this.errorService.handleError(err);
+          return of(err);
+        })
+      );
+  }
+
+  patchExternalBankAccount(
+    externalAccountGuid: string
+  ): Observable<ExternalBankAccountBankModel> {
+    const patchExternalBankAccountModel: PatchExternalBankAccountBankModel = {
+      state: PatchExternalBankAccountBankModel.StateEnum.Completed
+    };
+
+    return this.externalBankAccountService
+      .patchExternalBankAccount(
+        externalAccountGuid,
+        patchExternalBankAccountModel
+      )
+      .pipe(
+        catchError((err) => {
+          this.eventService.handleEvent(
+            LEVEL.ERROR,
+            CODE.DATA_ERROR,
+            'Unable to update account'
+          );
+          this.errorService.handleError(new Error('Unable to update account'));
+          return of(err);
+        })
+      );
+  }
+
+  deleteExternalBankAccount(
+    externalAccountGuid: string
+  ): Observable<ExternalBankAccountBankModel> {
+    return this.externalBankAccountService
+      .deleteExternalBankAccount(externalAccountGuid)
+      .pipe(
+        catchError((err: any) => {
+          let message = 'There was an error deleting a bank account';
+          this.eventService.handleEvent(LEVEL.ERROR, CODE.DATA_ERROR, message);
+          this.errorService.handleError(err);
+          return of(err);
+        })
+      );
   }
 
   createWorkflow(
-    kind: PostWorkflowBankModel.KindEnum
+    kind: PostWorkflowBankModel.KindEnum,
+    externalAccountGuid?: string
   ): Observable<WorkflowBankModel> {
     const postWorkflowBankModel = { ...this.postWorkflowBankModel };
     postWorkflowBankModel.kind = kind;
-    return this.workflowService.createWorkflow(postWorkflowBankModel);
+    postWorkflowBankModel.external_bank_account_guid = externalAccountGuid;
+    return this.workflowService.createWorkflow(postWorkflowBankModel).pipe(
+      catchError((err: any) => {
+        const message =
+          externalAccountGuid !== undefined
+            ? 'There was an error reconnecting a bank account'
+            : 'There was an error creating a bank account';
+        this.eventService.handleEvent(LEVEL.ERROR, CODE.DATA_ERROR, message);
+        this.errorService.handleError(err);
+        return of(err);
+      })
+    );
   }
 
   getWorkflow(guid: string): Observable<WorkflowWithDetailsBankModel> {

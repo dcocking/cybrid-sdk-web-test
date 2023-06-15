@@ -1,0 +1,23 @@
+<ng-container *ngIf="(isLoading$ | async) !== true; else loading">
+  <h1 class="mat-dialog-title">
+    {{ 'bankAccountConnect.confirm.title' | translate }}
+  </h1>
+  <div class="mat-dialog-content">
+    <p>
+      {{ 'bankAccountConnect.confirm.message' | translate }}
+      <strong>{{ code }}</strong
+      >?
+    </p>
+  </div>
+  <div mat-dialog-actions align="end">
+    <button id="'cancel" mat-flat-button [mat-dialog-close]>
+      {{ 'cancel' | translate }}
+    </button>
+    <button id="confirm" mat-flat-button color="primary" (click)="onConfirm()">
+      {{ 'confirm' | translate }}
+    </button>
+  </div>
+</ng-container>
+<ng-template #loading>
+  <app-loading></app-loading>
+</ng-template>

@@ -13,8 +13,7 @@ function customCommand(param: any): void {
   console.warn(param);
 }
 
-// @ts-ignore
-Cypress.Commands.add('login', (backstopped?: 'backstopped') => {
+beforeEach(() => {
   cy.intercept(
     'GET',
     'https://api.github.com/repos/Cybrid-app/cybrid-sdk-web/releases/latest',
@@ -22,7 +21,41 @@ Cypress.Commands.add('login', (backstopped?: 'backstopped') => {
       req.reply({});
     }
   );
+});
 
+// @ts-ignore
+Cypress.Commands.add('authenticate', () => {
+  const app = () => cy.get('app-login');
+  cy.session(
+    'auth',
+    () => {
+      cy.intercept('GET', 'api/customers/*').as('getCustomer');
+
+      cy.visit('/');
+      app()
+        .should('exist')
+        .get('#clientId')
+        .type(Cypress.env('CLIENT_ID_PLAID'));
+      app().get('#clientSecret').type(Cypress.env('CLIENT_SECRET_PLAID'));
+      app().get('#customerGuid').type(Cypress.env('CUSTOMER_GUID_PLAID'));
+      cy.get('mat-select').click();
+      cy.get('mat-option').contains('Staging').click();
+      app().get('#login').click();
+      app()
+        .should('not.exist')
+        .then(() => {
+          cy.window().getAllLocalStorage().should('not.eq', {});
+          cy.wait('@getCustomer');
+        });
+    },
+    {
+      cacheAcrossSpecs: true
+    }
+  );
+});
+
+// @ts-ignore
+Cypress.Commands.add('login', (backstopped?: 'backstopped') => {
   cy.visit('/');
 
   function typeCredentials(
@@ -36,6 +69,8 @@ Cypress.Commands.add('login', (backstopped?: 'backstopped') => {
       .type(Cypress.env(client_id));
     cy.get('#clientSecret').type(Cypress.env(client_secret));
     cy.get('#customerGuid').type(Cypress.env(customer_guid));
+    cy.get('mat-select').click();
+    cy.get('mat-option').contains('Staging').click();
     cy.get('#login').click();
   }
 

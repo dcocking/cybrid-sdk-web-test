@@ -8,56 +8,73 @@ import {
   AccountListComponent,
   AccountDetailsComponent,
   IdentityVerificationComponent,
-  BankAccountConnectComponent
+  BankAccountConnectComponent,
+  TransferComponent,
+  BankAccountListComponent
 } from '@components';
+
+import { ComponentGuard } from '@guards';
 
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: 'app/price-list',
+    redirectTo: 'app',
     pathMatch: 'full'
-  },
-  {
-    path: 'app',
-    redirectTo: 'app/price-list'
   },
   {
     path: 'app',
     children: [
       {
         path: 'price-list',
-        component: PriceListComponent
+        component: PriceListComponent,
+        canActivate: [ComponentGuard]
       },
       {
         path: 'trade',
-        component: TradeComponent
+        component: TradeComponent,
+        canActivate: [ComponentGuard]
       },
       {
         path: 'account-list',
-        component: AccountListComponent
+        component: AccountListComponent,
+        canActivate: [ComponentGuard]
       },
       {
         path: 'account-details',
-        component: AccountDetailsComponent
+        component: AccountDetailsComponent,
+        canActivate: [ComponentGuard]
       },
       {
         path: 'identity-verification',
-        component: IdentityVerificationComponent
+        component: IdentityVerificationComponent,
+        canActivate: [ComponentGuard]
       },
       {
         path: 'bank-account-connect',
-        component: BankAccountConnectComponent
+        component: BankAccountConnectComponent,
+        canActivate: [ComponentGuard]
+      },
+      {
+        path: 'bank-account-list',
+        component: BankAccountListComponent,
+        canActivate: [ComponentGuard]
+      },
+      {
+        path: 'transfer',
+        component: TransferComponent,
+        canActivate: [ComponentGuard]
       }
     ]
   },
   {
     path: '**',
-    redirectTo: 'app/price-list'
+    redirectTo: 'app'
   }
 ];
 
 @NgModule({
   imports: [RouterTestingModule.withRoutes(routes)],
-  exports: [RouterTestingModule]
+  exports: [RouterTestingModule],
+  providers: [ComponentGuard]
 })
 export class RoutingModule {}

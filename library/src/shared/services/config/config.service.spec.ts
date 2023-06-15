@@ -1,5 +1,10 @@
-import { fakeAsync, TestBed, tick } from '@angular/core/testing';
-import { of } from 'rxjs';
+import {
+  discardPeriodicTasks,
+  fakeAsync,
+  TestBed,
+  tick
+} from '@angular/core/testing';
+import { Observable, of, take } from 'rxjs';
 
 // Services
 import {
@@ -11,13 +16,15 @@ import {
 
 // Utility
 import { TranslateService } from '@ngx-translate/core';
-import { TestConstants } from '@constants';
+import { Constants, TestConstants } from '@constants';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import {
-  BanksService,
+  Configuration,
+  CustomerBankModel,
   CustomersService
 } from '@cybrid/cybrid-api-bank-angular';
+import { environment } from '@environment';
 
 describe('ConfigService', () => {
   let service: ConfigService;
@@ -28,8 +35,12 @@ describe('ConfigService', () => {
     'setDefaultLang',
     'use'
   ]);
-  let MockCustomersService = jasmine.createSpyObj(['getCustomer']);
-  let MockBanksService = jasmine.createSpyObj(['getBank']);
+  let MockCustomersService = jasmine.createSpyObj('CustomersService', [
+    'getCustomer'
+  ]);
+  class MockConfiguration extends Configuration {
+    override basePath = environment.sandboxBankApiBasePath;
+  }
 
   // Reset config to mock prod
   TestConstants.CONFIG.customer = '';
@@ -41,8 +52,8 @@ describe('ConfigService', () => {
         { provide: ErrorService, useValue: MockErrorService },
         { provide: EventService, useValue: MockEventService },
         { provide: TranslateService, useValue: MockTranslateService },
-        { provide: CustomersService, useValue: MockCustomersService },
-        { provide: BanksService, useValue: MockBanksService }
+        { provide: Configuration, useClass: MockConfiguration },
+        { provide: CustomersService, useValue: MockCustomersService }
       ]
     });
     service = TestBed.inject(ConfigService);
@@ -53,8 +64,6 @@ describe('ConfigService', () => {
     MockCustomersService.getCustomer.and.returnValue(
       of(TestConstants.CUSTOMER_BANK_MODEL)
     );
-    MockBanksService = TestBed.inject(BanksService);
-    MockBanksService.getBank.and.returnValue(of(TestConstants.BANK_BANK_MODEL));
   });
 
   it('should be created', () => {
@@ -62,7 +71,7 @@ describe('ConfigService', () => {
   });
 
   it('should initialize the defaultConfig', () => {
-    expect(service.config).toEqual(TestConstants.CONFIG);
+    expect(service.config).toEqual(Constants.DEFAULT_CONFIG);
   });
 
   it('should set config$ with a host config when setConfig() is called', fakeAsync(() => {
@@ -125,17 +134,68 @@ describe('ConfigService', () => {
     });
   });
 
+  it('should set environment', () => {
+    // 'default'
+    service.setEnvironment(TestConstants.CONFIG);
+
+    expect(service['configuration'].basePath).toEqual(
+      environment.stagingBankApiBasePath
+    );
+
+    // 'local'
+    let testConfig = { ...TestConstants.CONFIG };
+    testConfig.environment = 'local';
+
+    service.setEnvironment(testConfig);
+    expect(service['configuration'].basePath).toEqual(
+      environment.localBankApiBasePath
+    );
+
+    // 'staging'
+    testConfig.environment = 'staging';
+
+    service.setEnvironment(testConfig);
+    expect(service['configuration'].basePath).toEqual(
+      environment.stagingBankApiBasePath
+    );
+
+    // 'sandbox'
+    testConfig.environment = 'sandbox';
+
+    service.setEnvironment(testConfig);
+    expect(service['configuration'].basePath).toEqual(
+      environment.sandboxBankApiBasePath
+    );
+
+    // 'production'
+    testConfig.environment = 'production';
+
+    service.setEnvironment(testConfig);
+    expect(service['configuration'].basePath).toEqual(
+      environment.productionBankApiBasePath
+    );
+  });
+
+  it('should init platform data', fakeAsync(() => {
+    service.setConfig(Constants.DEFAULT_CONFIG);
+    service.initPlatformData();
+
+    tick(Constants.PLATFORM_REFRESH_INTERVAL);
+    discardPeriodicTasks();
+
+    expect(MockCustomersService.getCustomer).toHaveBeenCalled();
+  }));
+
   it('should fetch customer data', () => {
+    expect(service.getCustomer$()).toBeInstanceOf(
+      Observable<CustomerBankModel>
+    );
+
     service
       .getCustomer$()
+      .pipe(take(1))
       .subscribe((customer) =>
         expect(customer).toEqual(TestConstants.CUSTOMER_BANK_MODEL)
       );
-  });
-
-  it('should fetch bank data', () => {
-    service
-      .getBank$()
-      .subscribe((bank) => expect(bank).toEqual(TestConstants.BANK_BANK_MODEL));
   });
 });
