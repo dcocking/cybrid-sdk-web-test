@@ -62,13 +62,8 @@ export class DemoDetailsComponent implements AfterViewInit, OnDestroy {
           this._renderer2.setProperty(sdk, 'component', params['id']);
 
           console.log(`demo-details: ${this.location.path(true)}`);
-          console.log(
-            `demo-details search: ${new URLSearchParams(
-              window.location.search
-            )}`
-          );
-
           const searchParams = new URLSearchParams(window.location.search);
+          console.log(`demo details window: ${searchParams}`);
 
           // Update routed component, and any query params
           this.location.replaceState(`demo/${params['id'] + searchParams}`);
