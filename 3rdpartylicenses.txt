@@ -32,9 +32,6 @@ MIT
 @angular/core
 MIT
 
-@angular/elements
-MIT
-
 @angular/forms
 MIT
 
@@ -70,6 +67,9 @@ MIT
 MIT
 
 @cybrid/cybrid-api-bank-angular
+Apache-2.0
+
+@cybrid/cybrid-api-id-angular
 Apache-2.0
 
 @cybrid/cybrid-sdk-ui-js
@@ -361,7 +361,7 @@ zone.js
 MIT
 The MIT License
 
-Copyright (c) 2010-2022 Google LLC. https://angular.io/license
+Copyright (c) 2010-2023 Google LLC. https://angular.io/license
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
