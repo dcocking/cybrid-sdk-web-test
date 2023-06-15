@@ -46,7 +46,7 @@ export class DemoViewerComponent implements OnInit {
       .pipe(takeUntil(this.unsubscribe$))
       .subscribe((config) => (this.config = config));
 
-    console.log(this.location.path(true));
+    console.log(`demo-viewer: ${this.location.path(true)}`);
   }
 
   ngOnInit() {
