@@ -19,6 +19,11 @@
     href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined"
     rel="stylesheet"
   />
+  <script>
+    const hashPath = window.location.pathname.replace('/demo', '') + window.location.search + window.location.hash;
+    window.location.href = `/#${hashPath}`;
+  </script>
+
 </head>
 <body>
 <app-root></app-root>
