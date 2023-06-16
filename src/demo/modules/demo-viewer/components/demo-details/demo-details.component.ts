@@ -64,7 +64,7 @@ export class DemoDetailsComponent implements AfterViewInit, OnDestroy {
           console.log(`demo-details: ${this.location.path(true)}`);
 
           // Update routed component, and any query params
-          this.location.replaceState(this.location.path(true));
+          // this.location.replaceState(this.location.path(true));
 
           // Subscribe to logging
           this._renderer2.listen(sdk, 'eventLog', (event) => {
