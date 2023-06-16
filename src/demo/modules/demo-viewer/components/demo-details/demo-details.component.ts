@@ -6,7 +6,6 @@ import {
   Renderer2,
   ViewChild
 } from '@angular/core';
-import { Location } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 
 import {
@@ -43,7 +42,6 @@ export class DemoDetailsComponent implements AfterViewInit, OnDestroy {
     private activatedRoute: ActivatedRoute,
     private configService: ConfigService,
     private _renderer2: Renderer2,
-    private location: Location,
     private window: Window
   ) {}
 
@@ -62,11 +60,6 @@ export class DemoDetailsComponent implements AfterViewInit, OnDestroy {
           this._renderer2.setProperty(sdk, 'config', config);
           this._renderer2.setProperty(sdk, 'component', params['id']);
 
-          console.log(`demo-details: ${this.window.location.href}`);
-
-          // Update routed component, and any query params
-          // this.location.replaceState(this.location.path(true));
-
           // Subscribe to logging
           this._renderer2.listen(sdk, 'eventLog', (event) => {
             console.log(event.detail);
@@ -77,14 +70,6 @@ export class DemoDetailsComponent implements AfterViewInit, OnDestroy {
               const component = eventLog.data['default'];
 
               this.demoViewerService.updateRoute(component);
-
-              console.log(
-                `updated from router: ${this.window.location.search}`
-              );
-              // Update routed component, and any query params
-              // this.location.replaceState(
-              //   `/demo/${component + this.window.location.search}`
-              // );
             }
           });
 
