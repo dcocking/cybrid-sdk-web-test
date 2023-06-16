@@ -1,6 +1,6 @@
 <!-- Workaround fo Github Pages. If a route doesn't exist, this 404 will be served which mirrors the index.html -->
 <!DOCTYPE html>
-<html lang="en" class="cybrid-light-theme">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta
@@ -11,15 +11,6 @@
     <base href="/cybrid-sdk-web-test/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined"
-      rel="stylesheet"
-    />
     <!-- Hash forwarding. Plaid doesn't allow for '#' in their redirectUri -->
     <script>
       const currentPath = window.location.pathname;
@@ -38,8 +29,4 @@
       // window.location.href = newPath;
     </script>
   </head>
-  <body>
-        <app-root></app-root>
-    <p>test</p>
-  </body>
 </html>
