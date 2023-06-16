@@ -26,6 +26,7 @@ export class RoutingService {
       .pipe(
         take(1),
         map((config: ComponentConfig) => {
+          console.log(`routing service: ${this.router.url}`);
           const path = 'app/' + routingData.route;
 
           if (config.routing || routingData.origin == 'cybrid-app') {
