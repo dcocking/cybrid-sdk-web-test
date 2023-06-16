@@ -2,11 +2,6 @@
   <mat-toolbar color="primary">
     <img [src]="CybridLogo" alt="Cybrid logo" />
     <div class="spacer"></div>
-    <a
-      class="mat-body package"
-      href="https://www.npmjs.com/package/@cybrid/cybrid-sdk-ui-js"
-      >{{ 'cybrid-sdk-ui-js@ ' + (version | async) }}</a
-    >
     <ng-container *ngIf="configService.config$ | async as config">
       <button mat-icon-button (click)="toggleTheme(config)">
         <mat-icon>{{

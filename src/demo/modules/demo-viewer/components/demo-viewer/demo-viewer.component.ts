@@ -1,9 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormControl, FormGroup } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { Location } from '@angular/common';
 
-import { Subject, takeUntil, tap } from 'rxjs';
+import { map, Subject, takeUntil, tap } from 'rxjs';
 
 import { Constants } from '@constants';
 import { environment } from '../../../../../environments/environment';
@@ -33,6 +34,10 @@ export class DemoViewerComponent implements OnInit {
   message = '';
   config = Constants.DEFAULT_CONFIG;
 
+  version$ = this.http
+    .get(Constants.REPO_URL)
+    .pipe(map((tag) => Object(tag)['tag_name'] as string));
+
   unsubscribe$ = new Subject();
   constructor(
     private demoViewerService: DemoViewerService,
@@ -40,6 +45,7 @@ export class DemoViewerComponent implements OnInit {
     private configService: ConfigService,
     private authService: AuthService,
     private location: Location,
+    private http: HttpClient,
     private router: Router
   ) {
     this.configService.config$

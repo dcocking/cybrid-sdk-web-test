@@ -2,14 +2,13 @@ import { Component } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { OverlayContainer } from '@angular/cdk/overlay';
 
-import { map, take, switchMap, of } from 'rxjs';
+import { take, switchMap, of } from 'rxjs';
 
 // Services
 import { ConfigService } from './services/config/config.service';
 import { AuthService } from './services/auth/auth.service';
 
 // Utility
-import { Constants } from '@constants';
 import { ComponentConfig } from '@services';
 
 @Component({
@@ -20,10 +19,6 @@ import { ComponentConfig } from '@services';
 export class AppComponent {
   CybridLogo =
     'https://assets-global.website-files.com/6226732e4130814a4adb86c2/62430bcedab2d5494d20b601_logo-white.svg';
-
-  version = this.http
-    .get(Constants.REPO_URL)
-    .pipe(map((tag) => Object(tag)['tag_name'] as string));
 
   constructor(
     private http: HttpClient,
