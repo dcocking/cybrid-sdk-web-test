@@ -78,7 +78,9 @@ export class DemoDetailsComponent implements AfterViewInit, OnDestroy {
               this.demoViewerService.updateRoute(component);
 
               // Update routed component, and any query params
-              this.location.replaceState(`/demo/${component}`);
+              this.location.replaceState(
+                `/demo/${component + window.location.search}`
+              );
             }
           });
 
