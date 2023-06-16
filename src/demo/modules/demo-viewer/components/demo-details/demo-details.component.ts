@@ -34,7 +34,7 @@ export class DemoDetailsComponent implements AfterViewInit, OnDestroy {
   sdk = new ReplaySubject<ElementRef>(1);
   sdk$ = this.sdk.asObservable().pipe();
 
-  auth = <string>window.localStorage.getItem('customer');
+  auth = <string>this.window.localStorage.getItem('customer');
 
   private unsubscribe$ = new Subject();
 
@@ -43,7 +43,8 @@ export class DemoDetailsComponent implements AfterViewInit, OnDestroy {
     private activatedRoute: ActivatedRoute,
     private configService: ConfigService,
     private _renderer2: Renderer2,
-    private location: Location
+    private location: Location,
+    private window: Window
   ) {}
 
   ngAfterViewInit() {
@@ -61,10 +62,10 @@ export class DemoDetailsComponent implements AfterViewInit, OnDestroy {
           this._renderer2.setProperty(sdk, 'config', config);
           this._renderer2.setProperty(sdk, 'component', params['id']);
 
-          console.log(`demo-details: ${this.location.path(true)}`);
+          console.log(`demo-details: ${this.window.location.href}`);
 
           // Update routed component, and any query params
-          this.location.replaceState(this.location.path(true));
+          // this.location.replaceState(this.location.path(true));
 
           // Subscribe to logging
           this._renderer2.listen(sdk, 'eventLog', (event) => {
@@ -79,7 +80,7 @@ export class DemoDetailsComponent implements AfterViewInit, OnDestroy {
 
               // Update routed component, and any query params
               this.location.replaceState(
-                `/demo/${component + window.location.search}`
+                `/demo/${component + this.window.location.search}`
               );
             }
           });
