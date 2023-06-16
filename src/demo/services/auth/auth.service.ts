@@ -213,7 +213,7 @@ export class AuthService {
     this.sessions = {};
 
     this.isAuthenticated.next(false);
-    this.router.navigateByUrl('login');
+    this.router.navigate(['login']);
   }
 
   get environment(): Environment {
