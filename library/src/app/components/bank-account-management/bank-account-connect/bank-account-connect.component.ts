@@ -125,6 +125,9 @@ export class BankAccountConnectComponent implements OnInit {
               this.window.location.search
             ).get('oauth_state_id');
 
+            console.log(linkToken);
+            console.log(oauth_state_id);
+
             linkToken && oauth_state_id
               ? this.bootstrapPlaid(linkToken, oauth_state_id)
               : this.checkSupportedFiatAssets();
