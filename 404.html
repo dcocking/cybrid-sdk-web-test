@@ -16,8 +16,6 @@
       const currentPath = window.location.pathname;
       const currentSearch = window.location.search;
 
-      console.log(window.location.search);
-
       const newPath =
         currentPath.replace(
           /^\/cybrid-sdk-web-test\/(.*)$/,
@@ -26,7 +24,7 @@
 
       console.log(`404 page: ${newPath}`);
 
-      // window.location.href = newPath;
+      window.location.href = newPath;
     </script>
   </head>
 </html>
