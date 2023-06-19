@@ -90,7 +90,6 @@ export class BankAccountConnectComponent implements OnInit {
     private customersService: CustomersService,
     private router: RoutingService,
     private route: ActivatedRoute,
-    private window: Window,
     private _renderer2: Renderer2,
     private platform: Platform,
     private dialog: MatDialog
@@ -120,7 +119,7 @@ export class BankAccountConnectComponent implements OnInit {
             this.errorService.handleError(new Error(message));
             this.mobile$.next(true);
           } else {
-            const linkToken = this.window.localStorage.getItem('linkToken');
+            const linkToken = window.localStorage.getItem('linkToken');
             const oauth_state_id = new URLSearchParams(
               window.location.search
             ).get('oauth_state_id');
@@ -236,7 +235,7 @@ export class BankAccountConnectComponent implements OnInit {
   }
 
   bootstrapPlaid(linkToken: string, receivedRedirectUri?: string): void {
-    this.window.localStorage.setItem('linkToken', linkToken);
+    window.localStorage.setItem('linkToken', linkToken);
 
     combineLatest([
       this.bankAccountService.getPlaidClient(),
