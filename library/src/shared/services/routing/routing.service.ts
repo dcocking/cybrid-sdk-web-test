@@ -27,7 +27,10 @@ export class RoutingService {
       .pipe(
         take(1),
         map((config: ComponentConfig) => {
+          console.log(this.window.location);
           const path = 'app/' + routingData.route + this.window.location.search;
+
+          console.log(`path: ${path}`);
 
           if (config.routing || routingData.origin == 'cybrid-app') {
             this.eventService.handleEvent(
