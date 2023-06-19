@@ -120,29 +120,21 @@ export class BankAccountConnectComponent implements OnInit {
             this.mobile$.next(true);
           } else {
             const linkToken = window.localStorage.getItem('linkToken');
-            const oauth_state_id = new URLSearchParams(
-              window.location.search
-            ).get('oauth_state_id');
+            const urlParams = new URLSearchParams(window.location.search);
+            const queryOauthStateId = urlParams.get('oauth_state_id');
 
-            console.log(`bank-account-connect link-token: ${linkToken}`);
-            console.log(`window.location: ${window.location}`);
-            console.log(
-              `window.location.search: ${window.location.hash.search}`
-            );
-            console.log(window.location.hash.indexOf('?'));
-            console.log(
-              new URLSearchParams(
-                window.location.hash.substring(
-                  window.location.hash.indexOf('?')
-                )
-              ).get('oauth_state_id')
-            );
+            const hashOauthStateId = (() => {
+              const queryStringIndex = window.location.hash.indexOf('?');
+              if (queryStringIndex !== -1) {
+                const queryString =
+                  window.location.hash.substring(queryStringIndex);
+                const urlParams = new URLSearchParams(queryString);
+                return urlParams.get('oauth_state_id');
+              }
+              return null;
+            })();
 
-            console.log(
-              `oauth_state_id: ${new URLSearchParams(
-                window.location.search
-              ).get('oauth_state_id')}`
-            );
+            const oauth_state_id = queryOauthStateId || hashOauthStateId || '';
 
             linkToken && oauth_state_id
               ? this.bootstrapPlaid(linkToken, oauth_state_id)
