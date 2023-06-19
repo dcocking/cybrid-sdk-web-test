@@ -121,8 +121,8 @@ export class BankAccountConnectComponent implements OnInit {
           } else {
             const linkToken = window.localStorage.getItem('linkToken');
             const urlParams = new URLSearchParams(window.location.search);
-            const queryOauthStateId = urlParams.get('oauth_state_id');
 
+            const queryOauthStateId = urlParams.get('oauth_state_id');
             const hashOauthStateId = (() => {
               const queryStringIndex = window.location.hash.indexOf('?');
               if (queryStringIndex !== -1) {
@@ -134,7 +134,7 @@ export class BankAccountConnectComponent implements OnInit {
               return null;
             })();
 
-            const oauth_state_id = queryOauthStateId || hashOauthStateId || '';
+            const oauth_state_id = queryOauthStateId || hashOauthStateId;
 
             linkToken && oauth_state_id
               ? this.bootstrapPlaid(linkToken, oauth_state_id)

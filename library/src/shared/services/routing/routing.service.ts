@@ -17,8 +17,7 @@ export class RoutingService {
   constructor(
     private router: Router,
     private eventService: EventService,
-    private configService: ConfigService,
-    private window: Window
+    private configService: ConfigService
   ) {}
 
   handleRoute(routingData: RoutingData): void {
@@ -27,10 +26,7 @@ export class RoutingService {
       .pipe(
         take(1),
         map((config: ComponentConfig) => {
-          console.log(this.window.location);
-          const path = 'app/' + routingData.route + this.window.location.search;
-
-          console.log(`path: ${path}`);
+          const path = 'app/' + routingData.route;
 
           if (config.routing || routingData.origin == 'cybrid-app') {
             this.eventService.handleEvent(
