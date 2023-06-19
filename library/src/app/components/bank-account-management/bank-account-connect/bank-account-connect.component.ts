@@ -126,6 +126,17 @@ export class BankAccountConnectComponent implements OnInit {
 
             console.log(`bank-account-connect link-token: ${linkToken}`);
             console.log(`window.location: ${window.location}`);
+            console.log(`window.location.search: ${window.location.search}`);
+            console.log(
+              `window.location.search params: ${new URLSearchParams(
+                window.location.search
+              )}`
+            );
+            console.log(
+              `oauth_state_id: ${new URLSearchParams(
+                window.location.search
+              ).get('oauth_state_id')}`
+            );
 
             linkToken && oauth_state_id
               ? this.bootstrapPlaid(linkToken, oauth_state_id)
