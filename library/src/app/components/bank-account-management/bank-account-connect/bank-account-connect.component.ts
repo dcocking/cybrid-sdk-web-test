@@ -122,7 +122,7 @@ export class BankAccountConnectComponent implements OnInit {
           } else {
             const linkToken = this.window.localStorage.getItem('linkToken');
             const oauth_state_id = new URLSearchParams(
-              this.window.location.search
+              window.location.search
             ).get('oauth_state_id');
 
             console.log(`bank-account-connect link-token: ${linkToken}`);
